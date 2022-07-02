@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -16,61 +16,57 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function  run (){
     try{
         await client.connect();
-        const tasksToDoCollection = client
-            .db("TaskManagerDB")
-            .collection("Tasks_TODO");
+        const taskCollection = client.db("todo").collection("tasks");
 
-            app.post("/add-task", async(req, res) => {
-                const { TaskTitle } = req.body;
-                let task = {
-                    TaskTitle: TaskTitle,
-                    isComplete: false,
-                };
-                const id = (await tasksToDoCollection.insertOne(task)).insertedId;
-                if (id) {
-                    res.send({ success: true, msg: "Task added successfully" });
-                }
-            });
+        app.get('/tasks', async (req, res) => {
+            const query = {};
+            const cursor = taskCollection.find(query);
+            const tasks = await cursor.toArray();
+            res.send(tasks);
+        });
 
-            app.patch("/task-complete/:id", async(req, res) => {
-                const id = req.params.id;
-                // const query = { _id: ObjectId(id) };
-                console.log(id);
-    
-                const filter = { _id: ObjectId(id) };
-                const updateTask = {
-                    $set: {
-                        isComplete: true,
-                    },
-                };
-                const result = await tasksToDoCollection.updateOne(filter, updateTask);
-                console.log(result);
-                res.send(result);
-            });
-            
-            app.patch("/edit-task/:id", async(req, res) => {
-                const id = req.params.id;
-    
-                const { TaskTitle } = req.body;
-    
-                const filter = { _id: ObjectId(id) };
-                const updateTask = {
-                    $set: {
-                        isComplete: true,
-                    },
-                };
-                const result = await tasksToDoCollection.updateOne(filter, updateTask);
-                console.log(result);
-                res.send(result);
-            });
-    
-            app.get("/getTasksToDo", async(req, res) => {
-                const query = {};
-                const cursor = tasksToDoCollection.find(query);
-                const tasks = await cursor.toArray();
-                res.send(tasks);
-            });
+        app.patch("/task-complete/:id", async (req, res) => {
+            const id = req.params.id;
+
+            const filter = { _id: ObjectId(id) };
+            const updateTask = {
+                $set: {
+                    isComplete: true,
+                },
+            };
+            const result = await taskCollection.updateOne(filter, updateTask);
+            console.log(result);
+            res.send(result);
+        });
+
+         // to add task
+         app.post("/add-task", async (req, res) => {
+            const { taskName } = req.body;
+            let task = {
+                taskName: taskName,
+                isComplete: false,
+            };
+            const id = (await taskCollection.insertOne(task)).insertedId;
+            if (id) {
+                res.send({ success: true, msg: "Task added successfully" });
+            }
+        });
+
+        app.patch("/edit-task/:id", async(req, res) => {
+            const id = req.params.id;
+
+            const { taskName } = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updateTask = {
+                $set: {
+                    taskName: taskName,
+                },
+            };
+            const result = await taskCollection.updateOne(filter, updateTask);
+            res.send(result);
+        });
     }
+    
     finally{
 
     }
